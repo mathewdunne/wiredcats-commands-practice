@@ -38,7 +38,12 @@ function compareSolutionNodes(actual: SolutionNode, expected: SolutionNode): boo
       return false;
     }
 
-    // Check each child
+    // For parallel groups, order doesn't matter - check if all children match (in any order)
+    if (actual.groupType === 'parallel') {
+      return arraysMatchUnordered(actual.children, expected.children);
+    }
+
+    // For sequential groups, order matters - check each child in order
     for (let i = 0; i < actual.children.length; i++) {
       if (!compareSolutionNodes(actual.children[i], expected.children[i])) {
         return false;
@@ -49,6 +54,32 @@ function compareSolutionNodes(actual: SolutionNode, expected: SolutionNode): boo
   }
 
   return false;
+}
+
+// Check if two arrays contain the same elements (unordered)
+function arraysMatchUnordered(actual: SolutionNode[], expected: SolutionNode[]): boolean {
+  if (actual.length !== expected.length) {
+    return false;
+  }
+
+  // Create a copy of expected to mark items as matched
+  const expectedCopy = [...expected];
+
+  // For each item in actual, find a matching item in expected
+  for (const actualItem of actual) {
+    const matchIndex = expectedCopy.findIndex(expectedItem =>
+      compareSolutionNodes(actualItem, expectedItem)
+    );
+
+    if (matchIndex === -1) {
+      return false; // No match found
+    }
+
+    // Remove the matched item so it can't be matched again
+    expectedCopy.splice(matchIndex, 1);
+  }
+
+  return true; // All items matched
 }
 
 // Validate workspace against solution
