@@ -34,7 +34,7 @@ export function GroupContainer({ group, onRemove, onRemoveChild, depth = 0 }: Gr
 
   const style = {
     transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0 : 1,
   };
 
   const Icon = group.groupType === 'parallel' ? Layers : ArrowRight;
@@ -53,11 +53,13 @@ export function GroupContainer({ group, onRemove, onRemoveChild, depth = 0 }: Gr
     >
       {/* Group Header */}
       <div
-        {...listeners}
         {...attributes}
-        className="flex items-center justify-between mb-2 cursor-grab active:cursor-grabbing"
+        className="flex items-center justify-between mb-2"
       >
-        <div className="flex items-center gap-2 text-white">
+        <div
+          {...listeners}
+          className="flex items-center gap-2 text-white cursor-grab active:cursor-grabbing flex-1"
+        >
           <Icon size={16} />
           <span className="font-semibold text-sm">{label} Group</span>
         </div>
@@ -65,9 +67,10 @@ export function GroupContainer({ group, onRemove, onRemoveChild, depth = 0 }: Gr
           <button
             onClick={(e) => {
               e.stopPropagation();
+              e.preventDefault();
               onRemove();
             }}
-            className="hover:bg-white/20 rounded p-1 transition-colors text-white"
+            className="hover:bg-white/20 rounded p-1 transition-colors text-white cursor-pointer z-10"
             aria-label="Remove group"
           >
             <X size={16} />

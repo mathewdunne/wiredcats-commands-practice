@@ -23,31 +23,35 @@ export function CommandTile({ command, instanceId, isInWorkspace = false, onRemo
 
   const style = {
     transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0 : 1,
   };
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      {...listeners}
       {...attributes}
       className={`
         ${command.color} text-white px-4 py-2 rounded-lg shadow-md
-        cursor-grab active:cursor-grabbing
         flex items-center justify-between gap-2
         transition-all hover:shadow-lg
         ${isDragging ? 'ring-2 ring-white' : ''}
       `}
     >
-      <span className="font-medium text-sm">{command.name}</span>
+      <span
+        {...listeners}
+        className="font-medium text-sm cursor-grab active:cursor-grabbing flex-1"
+      >
+        {command.name}
+      </span>
       {isInWorkspace && onRemove && (
         <button
           onClick={(e) => {
             e.stopPropagation();
+            e.preventDefault();
             onRemove();
           }}
-          className="hover:bg-white/20 rounded p-0.5 transition-colors"
+          className="hover:bg-white/20 rounded p-0.5 transition-colors cursor-pointer z-10"
           aria-label="Remove command"
         >
           <X size={14} />

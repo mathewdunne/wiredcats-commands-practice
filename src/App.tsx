@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
-import { CommandNode, ValidationResult } from './types';
+import type { CommandNode, ValidationResult } from './types';
 import { LEVELS } from './data/levels';
-import { AVAILABLE_COMMANDS, getCommandById } from './data/commands';
+import { getCommandById } from './data/commands';
 import { validateSolution } from './utils/validation';
 import {
   createCommandInstance,
@@ -14,6 +14,7 @@ import { WorkArea } from './components/WorkArea';
 import { LevelHeader } from './components/LevelHeader';
 import { ValidationButton } from './components/ValidationButton';
 import { CommandTile } from './components/CommandTile';
+import { Layers, ArrowRight } from 'lucide-react';
 
 function App() {
   const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
@@ -33,13 +34,14 @@ function App() {
     setActiveId(null);
     const { active, over } = event;
 
-    if (!over) return;
-
     const activeData = active.data.current;
-    const overData = over.data.current;
+    const overData = over?.data.current;
 
     // Dragging from palette
     if (activeData?.fromPalette) {
+      // Only add if there's a valid drop target
+      if (!over) return;
+
       if (activeData.type === 'command') {
         const newCommand = createCommandInstance(activeData.commandId);
 
@@ -62,9 +64,24 @@ function App() {
         }
       }
     }
-    // Moving within workspace
+    // Moving within workspace - items can only be moved, never deleted by dragging
     else if (activeData?.instanceId) {
       const instanceId = activeData.instanceId;
+
+      // If no valid drop target OR dropped on invalid location, keep item in place (do nothing)
+      if (!over || (!overData?.type || (overData.type !== 'workspace-root' && overData.type !== 'group-container'))) {
+        return; // Item stays in original position
+      }
+
+      // Don't allow dropping on itself
+      if (over.id === instanceId) {
+        return;
+      }
+
+      // Don't allow dropping a group into itself
+      if (overData.type === 'group-container' && overData.groupInstanceId === instanceId) {
+        return;
+      }
 
       // Remove from current position
       const removed = findAndRemoveNode(workspace, instanceId);
@@ -72,15 +89,12 @@ function App() {
 
       const { node, newWorkspace } = removed;
 
-      if (overData?.type === 'workspace-root') {
+      if (overData.type === 'workspace-root') {
         // Move to root workspace
         setWorkspace([...newWorkspace, node]);
-      } else if (overData?.type === 'group-container') {
+      } else if (overData.type === 'group-container') {
         // Move to group
         setWorkspace(addToGroup(newWorkspace, overData.groupInstanceId, node));
-      } else {
-        // Invalid drop, restore original workspace
-        setWorkspace(workspace);
       }
     }
 
@@ -192,17 +206,62 @@ function App() {
   const getActiveDragItem = () => {
     if (!activeId) return null;
 
+    // Handle group dragging from palette
+    if (activeId === 'palette-group-sequential' || activeId === 'palette-group-parallel') {
+      const groupType = activeId === 'palette-group-sequential' ? 'sequential' : 'parallel';
+      const Icon = groupType === 'parallel' ? Layers : ArrowRight;
+      const label = groupType === 'parallel' ? 'Parallel' : 'Sequential';
+
+      return (
+        <div className="bg-gray-700 text-white px-4 py-2 rounded-lg shadow-md border-2 border-gray-600 flex items-center gap-2 opacity-90">
+          <Icon size={16} />
+          <span className="font-medium text-sm">{label}</span>
+        </div>
+      );
+    }
+
+    // Handle command dragging from palette
     if (activeId.startsWith('palette-')) {
-      const commandId = activeId.replace('palette-', '').replace('group-', '');
-      if (commandId === 'sequential' || commandId === 'parallel') {
-        return null; // We'll handle groups differently
-      }
+      const commandId = activeId.replace('palette-', '');
       const command = getCommandById(commandId);
       if (command) {
         return <CommandTile command={command} />;
       }
     }
 
+    // Handle dragging items already in workspace
+    const node = findNodeInWorkspace(workspace, activeId as string);
+    if (node) {
+      if (node.type === 'command') {
+        const command = getCommandById(node.commandId);
+        if (command) {
+          return <CommandTile command={command} />;
+        }
+      } else {
+        const Icon = node.groupType === 'parallel' ? Layers : ArrowRight;
+        const label = node.groupType === 'parallel' ? 'Parallel' : 'Sequential';
+
+        return (
+          <div className="bg-gray-700 text-white px-4 py-2 rounded-lg shadow-md border-2 border-gray-600 flex items-center gap-2 opacity-90">
+            <Icon size={16} />
+            <span className="font-medium text-sm">{label} Group</span>
+          </div>
+        );
+      }
+    }
+
+    return null;
+  };
+
+  // Helper to find node in workspace by ID
+  const findNodeInWorkspace = (nodes: CommandNode[], id: string): CommandNode | null => {
+    for (const node of nodes) {
+      if (node.instanceId === id) return node;
+      if (node.type === 'group') {
+        const found = findNodeInWorkspace(node.children, id);
+        if (found) return found;
+      }
+    }
     return null;
   };
 
