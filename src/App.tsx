@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
 import type { CommandNode, ValidationResult } from './types';
 import { LEVELS } from './data/levels';
@@ -9,11 +9,13 @@ import {
   createGroupInstance,
   removeNode,
 } from './utils/commandStructure';
+import { loadWorkspace, saveWorkspace, clearWorkspace, markLevelComplete, isLevelComplete, areAllLevelsComplete } from './utils/persistence';
 import { CommandPalette } from './components/CommandPalette';
 import { WorkArea } from './components/WorkArea';
 import { LevelHeader } from './components/LevelHeader';
 import { ValidationButton } from './components/ValidationButton';
 import { CommandTile } from './components/CommandTile';
+import { CongratulationsModal } from './components/CongratulationsModal';
 import { Layers, ArrowRight } from 'lucide-react';
 
 function App() {
@@ -21,8 +23,41 @@ function App() {
   const [workspace, setWorkspace] = useState<CommandNode[]>([]);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [showCongratulations, setShowCongratulations] = useState(false);
+  const isLoadingRef = useRef(false);
 
   const currentLevel = LEVELS[currentLevelIndex];
+
+  // Load workspace from localStorage on mount and when level changes
+  useEffect(() => {
+    isLoadingRef.current = true;
+    const savedWorkspace = loadWorkspace(currentLevel.id);
+    setWorkspace(savedWorkspace);
+
+    // Check if loaded workspace is correct and show validation result
+    if (savedWorkspace.length > 0) {
+      const result = validateSolution(savedWorkspace, currentLevel.solution);
+      if (result.success) {
+        setValidationResult(result);
+      } else {
+        setValidationResult(null);
+      }
+    } else {
+      setValidationResult(null);
+    }
+
+    // Allow saving after loading is complete
+    setTimeout(() => {
+      isLoadingRef.current = false;
+    }, 0);
+  }, [currentLevel.id, currentLevel.solution]);
+
+  // Save workspace to localStorage whenever it changes (but not during loading)
+  useEffect(() => {
+    if (!isLoadingRef.current) {
+      saveWorkspace(currentLevel.id, workspace);
+    }
+  }, [workspace, currentLevel.id]);
 
   // Handle drag start
   const handleDragStart = (event: DragStartEvent) => {
@@ -177,28 +212,41 @@ function App() {
 
   // Handle validation
   const handleCheck = () => {
+    console.log(workspace)
     const result = validateSolution(workspace, currentLevel.solution);
     setValidationResult(result);
+
+    // If successful and not previously completed, mark as complete
+    if (result.success && !isLevelComplete(currentLevel.id)) {
+      markLevelComplete(currentLevel.id);
+
+      // Check if all levels are now complete
+      if (areAllLevelsComplete(LEVELS.length)) {
+          // Show congratulations modal after a short delay
+          setTimeout(() => {
+              setShowCongratulations(true);
+          }, 500);
+      }
+    }
   };
 
   // Handle reset
   const handleReset = () => {
     setWorkspace([]);
     setValidationResult(null);
+    clearWorkspace(currentLevel.id);
   };
 
   // Handle level navigation
   const handlePrevLevel = () => {
     if (currentLevelIndex > 0) {
       setCurrentLevelIndex(prev => prev - 1);
-      handleReset();
     }
   };
 
   const handleNextLevel = () => {
     if (currentLevelIndex < LEVELS.length - 1) {
       setCurrentLevelIndex(prev => prev + 1);
-      handleReset();
     }
   };
 
@@ -274,6 +322,7 @@ function App() {
           totalLevels={LEVELS.length}
           onPrevLevel={handlePrevLevel}
           onNextLevel={handleNextLevel}
+          isComplete={validationResult?.success || false}
         />
 
         <div className="flex-1 flex overflow-hidden">
@@ -289,6 +338,10 @@ function App() {
       </div>
 
       <DragOverlay>{getActiveDragItem()}</DragOverlay>
+      <CongratulationsModal
+        isOpen={showCongratulations}
+        onClose={() => setShowCongratulations(false)}
+      />
     </DndContext>
   );
 }

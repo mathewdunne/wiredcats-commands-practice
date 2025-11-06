@@ -1,5 +1,6 @@
 import { Level } from '../types';
-import { ChevronLeft, ChevronRight, Target } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
+import WiredcatsLogo from '../assets/WiredcatsVectorLogo.png';
 
 interface LevelHeaderProps {
   level: Level;
@@ -7,6 +8,7 @@ interface LevelHeaderProps {
   totalLevels: number;
   onPrevLevel: () => void;
   onNextLevel: () => void;
+  isComplete?: boolean;
 }
 
 export function LevelHeader({
@@ -15,18 +17,24 @@ export function LevelHeader({
   totalLevels,
   onPrevLevel,
   onNextLevel,
+  isComplete = false,
 }: LevelHeaderProps) {
   return (
     <div className="bg-gray-800 border-b-2 border-gray-700 px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Target className="text-yellow-400" size={24} />
+            <img src={WiredcatsLogo} alt="Wiredcats Logo" className="w-6 h-6" />
             <h1 className="text-2xl font-bold text-white">{level.title}</h1>
           </div>
-          <span className="text-gray-400 text-sm">
-            Level {currentLevelIndex + 1} of {totalLevels}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-100 text-md">
+              Level {currentLevelIndex + 1} of {totalLevels}
+            </span>
+            {isComplete && (
+              <CheckCircle className="text-green-500" size={20} />
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
