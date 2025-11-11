@@ -1,5 +1,6 @@
 import { Level } from '../types';
-import { ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle, Home } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import WiredcatsLogo from '../assets/WiredcatsVectorLogo.png';
 
 interface LevelHeaderProps {
@@ -19,6 +20,8 @@ export function LevelHeader({
   onNextLevel,
   isComplete = false,
 }: LevelHeaderProps) {
+  const navigate = useNavigate();
+
   return (
     <div className="bg-gray-800 border-b-2 border-gray-700 px-6 py-4">
       <div className="flex items-center justify-between">
@@ -38,6 +41,14 @@ export function LevelHeader({
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate('/')}
+            className="px-3 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-1"
+            title="Back to Home"
+          >
+            <Home size={18} />
+            Home
+          </button>
           <button
             onClick={onPrevLevel}
             disabled={currentLevelIndex === 0}
